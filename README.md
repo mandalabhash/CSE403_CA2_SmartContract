@@ -1,7 +1,7 @@
 CSE403- Blockchain | CA-2 | 14-11-2024
 ---
 
-# Smart Contract Explanation: Escrow for Baiting
+# Smart Contract Explanation: Escrow Mechanism
 
 ## Problem Statement
 
@@ -13,121 +13,126 @@ Let's make a scenario to implement the smart contract of a **escrow machanism**.
 
 ### Scenario
 
-**Raman** and **Suman** have made a bait on a Cricket Match, where both parties deposit their funds into the contract. **Preeti**, their sister, acts as the **mediator** and the contract owner. The contract is designed with the following functionality:
+- **Raman** and **Aman** place bets on a cricket match. They each deposit funds into the contract.
+  - **If Raman’s team wins**, he takes the entire pooled funds.
+  - **If Aman's team wins**, he takes the entire pooled funds.
+  - **If the match results in a draw**, both Raman and Aman are refunded their respective amounts.
+- **Preeti**, as the owner of the contract, acts as the mediator who:
+  - Declares the winner of the bet and distributes the funds.
+  - Declares a draw if the match is undecided, refunding both bettors.
+  - Has an emergency switch to instantly refund both bettors in case of unforeseen issues.
 
-1. **Deposits**: Both Raman and Suman place their bets.
-2. **Outcome Declaration**: The winner (either Raman or Suman) receives the full deposited amount based on the event's result.
-3. **Draw**: If the match results in a draw, both bettors get their funds back.
-4. **Emergency Mechanism**: Preeti, as the contract owner, can activate an emergency mode to halt the contract's operations and refund the funds to both parties, ensuring safety in case of unforeseen events.
+---
 
-## Relevant Code Snippets
+## Key Components and Code Snippets
 
-### 1. **Bet Placement**
-Raman and Suman can place their respective bets using the following functions:
+### 1. Contract Setup
+
+The contract specifies the owner (Preeti), bettors (Raman and Aman), their respective bet amounts, and an emergency state variable.
 
 ```solidity
-function placeBetA() public payable {
-    require(msg.sender == bettorA, "Only Bettor A can place this bet.");
-    require(msg.value > 0, "Bet amount must be greater than 0.");
-    require(betAmountA == 0, "Bet already placed by Bettor A.");
-
-    betAmountA = msg.value;
-    emit FundsDeposited(bettorA, msg.value);
-}
-
-function placeBetB() public payable {
-    require(msg.sender == bettorB, "Only Bettor B can place this bet.");
-    require(msg.value == betAmountA, "Bet amount must match Bettor A's amount.");
-    require(betAmountB == 0, "Bet already placed by Bettor B.");
-
-    betAmountB = msg.value;
-    emit FundsDeposited(bettorB, msg.value);
-}
+address public owner;
+address public bettorA; // Represents Raman
+address public bettorB; // Represents Aman
+uint256 public betAmountA; // Raman's bet amount
+uint256 public betAmountB; // Aman's bet amount
+bool public isEmergency;
 ```
 
-- **`placeBetA()`**: Allows Raman (Bettor A) to place a bet by sending Ether.
-- **`placeBetB()`**: Allows Suman (Bettor B) to place a bet too.
+- **owner**: Address of Preeti, the contract mediator.
+- **bettorA** and **bettorB**: Addresses of Raman and Aman, respectively.
+- **betAmountA** and **betAmountB**: Track the funds deposited by each bettor.
+- **isEmergency**: Boolean indicating if the contract is in an emergency state, disabling regular operations and triggering an automatic refund.
 
-### 2. **Outcome Declaration**
-Preeti (the owner) can declare the winner or draw using these functions:
+### 2. Placing Bets
+
+Raman and Aman each place their bets by calling the respective functions `placeBetA()` and `placeBetB()`. Both functions are designed to accept any amount, allowing flexibility in bet sizes.
+
+```solidity
+function placeBetA() public payable { /*...*/ }
+function placeBetB() public payable { /*...*/ }
+```
+
+- **Raman's Bet**: `placeBetA()` function allows Raman to place his bet by sending Ether.
+- **Aman's Bet**: `placeBetB()` function allows Aman to place his bet by sending Ether.
+- **Funds Deposited Event**: Emits an event whenever a bet is placed, recording the bettor’s address and the amount deposited.
+
+### 3. Declaring the Winner
+
+Once the match outcome is known, Preeti, as the owner, declares the winner using `declareWinner()`. The function transfers the entire pooled funds to the declared winner.
 
 ```solidity
 function declareWinner(address winner) public onlyOwner {
     require(!isEmergency, "Cannot declare winner during emergency.");
-    require(betAmountA > 0 && betAmountB > 0, "Both bets must be placed.");
-    require(winner == bettorA || winner == bettorB, "Invalid winner address.");
-
     uint256 totalBetAmount = betAmountA + betAmountB;
     payable(winner).transfer(totalBetAmount);
-    emit WinnerDeclared(winner, totalBetAmount);
-
-    // Reset bets after funds are transferred
-    betAmountA = 0;
-    betAmountB = 0;
-}
-
-function declareDraw() public onlyOwner {
-    require(!isEmergency, "Cannot declare draw during emergency.");
-    require(betAmountA > 0 && betAmountB > 0, "Both bets must be placed.");
-
-    // Refund both bettors
-    payable(bettorA).transfer(betAmountA);
-    payable(bettorB).transfer(betAmountB);
-    emit FundsRefunded(bettorA, betAmountA);
-    emit FundsRefunded(bettorB, betAmountB);
-
-    // Reset bets after refunds
-    betAmountA = 0;
-    betAmountB = 0;
 }
 ```
 
-- **`declareWinner()`**: Preeti declares the winner (either Raman or Suman) and transfers the total bet amount to the winner.
-- **`declareDraw()`**: If the event results in a draw, both bettors receive their funds back.
+- **Safety Check**: Ensures the contract is not in an emergency state before declaring a winner.
+- **Winner Transfer**: All funds are transferred to the declared winner’s address, ending the contract’s obligation.
 
-### 3. **Emergency Mode**
-Preeti can activate or deactivate the emergency mode to halt the contract's functions:
+### 4. Declaring a Draw
+
+If the match results in a draw, Preeti can use the `declareDraw()` function to refund both Raman and Aman. The function calls `refund()`, which handles the actual fund transfer back to each bettor.
 
 ```solidity
-function activateEmergency() public onlyOwner {
+function declareDraw() public onlyOwner {
+    require(!isEmergency, "Cannot declare draw during emergency.");
+    refund();
+}
+```
+
+- **Safety Check**: Verifies that the contract is not in an emergency state.
+- **Refund Call**: Invokes the `refund()` function to return each bettor’s funds.
+
+### 5. Emergency Switch and Automatic Refund
+
+In case of an emergency, Preeti can trigger an emergency state with `triggerEmergency()`. This action automatically refunds both Raman and Aman, protecting their funds.
+
+```solidity
+function triggerEmergency() public onlyOwner {
     isEmergency = true;
-    emit EmergencyActivated(msg.sender);
+    refund();
 }
+```
 
-function deactivateEmergency() public onlyOwner onlyInEmergency {
-    isEmergency = false;
-    emit EmergencyDeactivated(msg.sender);
-}
+- **Emergency Activation**: Sets the contract into an emergency state.
+- **Automatic Refund**: Calls `refund()` immediately, sending funds back to both Raman and Aman.
 
-function emergencyRefund() public onlyOwner onlyInEmergency {
+### 6. Refund Function
+
+The `refund()` function returns each bettor’s funds. This function is used in both the `declareDraw()` and `triggerEmergency()` functions to handle refunds consistently.
+
+```solidity
+function refund() internal {
     if (betAmountA > 0) {
         payable(bettorA).transfer(betAmountA);
-        emit FundsRefunded(bettorA, betAmountA);
         betAmountA = 0;
     }
-
     if (betAmountB > 0) {
         payable(bettorB).transfer(betAmountB);
-        emit FundsRefunded(bettorB, betAmountB);
         betAmountB = 0;
     }
 }
 ```
 
-- **`activateEmergency()`**: Preeti can activate the emergency mode to halt the contract's operations, ensuring no further actions like declaring a winner or draw can occur.
-- **`deactivateEmergency()`**: Once the emergency is resolved, Preeti can deactivate the emergency mode, resuming normal operations.
-- **`emergencyRefund()`**: If the emergency mode is active, Preeti can refund the deposits to both Raman and Suman to ensure safety.
-
-### Purpose of the Emergency Mechanism
-
-1. **Activate Emergency**: If there is an issue (e.g., the event is canceled), Preeti can activate the emergency mode to stop all functions, ensuring that the funds are not used or transferred during the emergency.
-2. **Refund Funds**: Once the emergency mode is activated, Preeti can use the `emergencyRefund()` function to refund the deposits to Raman and Suman, safeguarding their funds.
-3. **Deactivate Emergency**: After the issue is resolved, Preeti can deactivate the emergency mode, allowing the contract to resume normal operations.
+- **Funds Return**: Sends back the Ether deposited by each bettor.
+- **State Reset**: Resets `betAmountA` and `betAmountB` to zero after the refund, ensuring the contract can be reused.
 
 ---
 
-## Conclusion
+## Emergency Handling and Resumption
 
-This smart contract ensures that Raman and Suman's funds are securely handled through an **escrow mechanism**. The **emergency switch** guarantees that funds can be refunded safely in case of any unforeseen issues, making the contract more secure and reliable in real-world scenarios.
+The emergency switch prioritizes the safety of Raman and Aman’s funds. When triggered, it immediately refunds both bettors, disabling other contract functionalities until the emergency state is manually cleared by the owner if a reactivation function is implemented.
 
 ---
+
+## Security Considerations
+
+- **Emergency Refunds**: Protects bettors' funds by automatically triggering refunds in emergencies.
+- **Owner Control**: Only Preeti, the contract owner, can declare a winner, draw, or emergency.
+
+---
+
+This contract is a secure and fair betting mechanism, allowing for automatic refunds in emergencies, while Preeti acts as the responsible mediator for declaring match outcomes.
