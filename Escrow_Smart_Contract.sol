@@ -2,9 +2,9 @@
 pragma solidity ^0.8.21;
 
 contract EscrowBaiting {
-    address public owner; //here, we Preeti
-    address public bettorA; // lets say, Raman
-    address public bettorB; // lets say, Suman
+    address public owner;
+    address public bettorA;
+    address public bettorB;
     uint256 public betAmountA;
     uint256 public betAmountB;
     bool public isEmergency;
@@ -36,7 +36,7 @@ contract EscrowBaiting {
 
     function placeBetB() public payable {
         require(msg.sender == bettorB, "Only Bettor B can place this bet.");
-        require(msg.value == betAmountA, "Bet amount must match Bettor A's amount.");
+        require(msg.value > 0, "Bet amount must be greater than 0.");
         require(betAmountB == 0, "Bet already placed by Bettor B.");
 
         betAmountB = msg.value;
@@ -61,6 +61,7 @@ contract EscrowBaiting {
         require(!isEmergency, "Cannot declare draw during emergency.");
         require(betAmountA > 0 && betAmountB > 0, "Both bets must be placed.");
 
+        // Call refund function to refund both bettors
         refund();
     }
 
@@ -70,10 +71,11 @@ contract EscrowBaiting {
         isEmergency = true;
         emit EmergencyActivated(msg.sender);
 
+        // Call refund function to refund both bettors automatically
         refund();
     }
 
-    // Refund function
+    // Refund function to send back funds to both bettors
     function refund() internal {
         if (betAmountA > 0) {
             payable(bettorA).transfer(betAmountA);
