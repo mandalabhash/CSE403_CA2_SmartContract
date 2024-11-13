@@ -2,7 +2,7 @@
 pragma solidity 0.8.21;
 
 contract CricketMatchBet {
-    address public owner;
+    address public owner; //Preeti
     address public bettorA; // Raman
     address public bettorB; // Suman
     uint256 public betAmountA;
