@@ -131,5 +131,3 @@ function emergencyRefund() public onlyOwner onlyInEmergency {
 This smart contract ensures that Raman and Suman's funds are securely handled through an **escrow mechanism**. The **emergency switch** guarantees that funds can be refunded safely in case of any unforeseen issues, making the contract more secure and reliable in real-world scenarios.
 
 ---
-
-Let me know if you need further assistance or additional details for the MD file!
