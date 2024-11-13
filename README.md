@@ -1,5 +1,4 @@
 CSE403- Blockchain | CA-2 | 14-11-2024
----
 
 # Smart Contract Explanation: Escrow Mechanism
 
