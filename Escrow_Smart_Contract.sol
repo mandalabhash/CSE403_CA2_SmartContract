@@ -34,7 +34,6 @@ contract CricketMatchBet {
     function placeBetA() public payable {
         require(msg.sender == bettorA, "Only Bettor A can place this bet.");
         require(msg.value > 0, "Bet amount must be greater than 0.");
-        require(betAmountA == 0, "Bet already placed by Bettor A.");
 
         betAmountA = msg.value;
         emit FundsDeposited(bettorA, msg.value);
@@ -43,7 +42,6 @@ contract CricketMatchBet {
     function placeBetB() public payable {
         require(msg.sender == bettorB, "Only Bettor B can place this bet.");
         require(msg.value == betAmountA, "Bet amount must match Bettor A's amount.");
-        require(betAmountB == 0, "Bet already placed by Bettor B.");
 
         betAmountB = msg.value;
         emit FundsDeposited(bettorB, msg.value);
